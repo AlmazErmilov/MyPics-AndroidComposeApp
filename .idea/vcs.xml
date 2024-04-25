@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
-    <mapping directory="$PROJECT_DIR$/Buy-My-Contemporary-Art-App" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Calendar" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/MakeBodyGreatAgain" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/MyPics-AndroidComposeApp" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/basic-android-kotlin-compose-training-dessert-clicker" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/basic-android-kotlin-compose-training-unscramble" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
 </project>
