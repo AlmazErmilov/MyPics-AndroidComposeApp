@@ -74,8 +74,9 @@ fun AppNavigation() {
 @Composable
 fun MainScreen(viewModel: MainViewModel, navController: NavController) {
     Column {
-        SavedImagesList(viewModel)
         PlaceholderImagesList(viewModel)
+        Text(text = "_____________________________________")
+        SavedImagesList(viewModel)
     }
 }
 
