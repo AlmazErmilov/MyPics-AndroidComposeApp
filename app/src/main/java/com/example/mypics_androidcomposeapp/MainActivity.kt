@@ -37,13 +37,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+
 import coil.compose.AsyncImage
+import retrofit2.http.GET
 import com.example.mypics_androidcomposeapp.ui.theme.MyPicsAndroidComposeAppTheme
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -165,10 +170,6 @@ fun PlaceholderImagesList(viewModel: MainViewModel) {
         }
     }
 }
-
-
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -310,3 +311,25 @@ data class ImageModel(
     val imageUrl: String,
     val albumTitle: String? = null
 )
+
+//The interface that Retrofit uses to call the API.
+//interface defines methods for each API endpoint.
+interface PhotoService {
+    @GET("photos")
+    suspend fun getPhotos(): List<ImageModel>
+
+    @GET("albums")
+    suspend fun getAlbums(): List<Album>
+}
+
+// create and provide a Retrofit instance
+object ApiClient {
+    private const val BASE_URL = "https://jsonplaceholder.typicode.com/"
+
+    val instance: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+}
