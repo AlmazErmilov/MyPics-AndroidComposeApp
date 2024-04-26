@@ -1,5 +1,6 @@
 package com.example.mypics_androidcomposeapp
 
+import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -29,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -231,13 +233,14 @@ fun ImageDetailScreen(image: ImageModel, navController: NavController) {
         Text(text = "Image not found")
     }}
 
+/*
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
     MyPicsAndroidComposeAppTheme {
         MainScreen(MainViewModel(), rememberNavController())
     }
-}
+}*/
 
 sealed class DataState<out T> {
     object Loading : DataState<Nothing>()
@@ -245,7 +248,7 @@ sealed class DataState<out T> {
     data class Error(val exception: Exception) : DataState<Nothing>()
 }
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _savedImages = MutableStateFlow<DataState<List<ImageModel>>>(DataState.Loading)
     val savedImages: StateFlow<DataState<List<ImageModel>>> = _savedImages
 
@@ -253,6 +256,8 @@ class MainViewModel : ViewModel() {
 
     private val _allImages = MutableStateFlow<DataState<List<ImageModel>>>(DataState.Loading)
     val allImages: StateFlow<DataState<List<ImageModel>>> = _allImages
+
+    private val imageDao = DatabaseBuilder.getDatabase(application).imageDao()
 
     init { loadImages() }
 
@@ -281,6 +286,9 @@ class MainViewModel : ViewModel() {
             // Update the state with the new image added
             _savedImages.value = DataState.Success(currentList + image)
             // Here, you should also interact with the Room database to save the image
+            // Convert ImageModel to ImageEntity before saving
+            val imageEntity = ImageModel.toEntity(image)
+            imageDao.insertAll(imageEntity)
         }
     }
 
@@ -291,11 +299,13 @@ class MainViewModel : ViewModel() {
             // Update the state with the image removed
             _savedImages.value = DataState.Success(currentList.filter { it.id != image.id })
             // Here, you should also interact with the Room database to delete the image
+            val imageEntity = ImageModel.toEntity(image)
+            imageDao.delete(imageEntity)
         }
     }
 
+    // Simulate a network fetch with a delay
     private suspend fun mockNetworkFetch(): List<ImageModel> {
-        // Simulate a network fetch with a delay
         delay(2000)
         return listOf(
             ImageModel(1, 1, "Image 1", "https://via.placeholder.com/150/92c952", "https://via.placeholder.com/600/92c952"),
@@ -322,7 +332,20 @@ data class ImageModel(
     val thumbnailUrl: String,
     val imageUrl: String,
     val albumTitle: String? = null
-)
+){
+    //It's often useful to have a method to convert a data class to and from the entity class
+    companion object {
+        fun toEntity(image: ImageModel) = ImageEntity(
+            id = image.id,
+            albumId = image.albumId,
+            title = image.title,
+            thumbnailUrl = image.thumbnailUrl,
+            imageUrl = image.imageUrl,
+            albumTitle = image.albumTitle
+        )
+    }
+}
+
 data class Album(
     val userId: Int,
     val id: Int,
