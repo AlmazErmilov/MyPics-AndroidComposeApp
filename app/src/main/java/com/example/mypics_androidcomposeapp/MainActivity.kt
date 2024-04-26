@@ -238,12 +238,12 @@ class MainViewModel : ViewModel() {
     private val _savedImages = MutableStateFlow<DataState<List<ImageModel>>>(DataState.Loading)
     val savedImages: StateFlow<DataState<List<ImageModel>>> = _savedImages
 
+    private val photoService = ApiClient.instance.create(PhotoService::class.java)
+
     private val _allImages = MutableStateFlow<DataState<List<ImageModel>>>(DataState.Loading)
     val allImages: StateFlow<DataState<List<ImageModel>>> = _allImages
 
-    init {
-        loadImages()
-    }
+    init { loadImages() }
 
     lateinit var navController: NavController
 
@@ -251,7 +251,7 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             _allImages.value = DataState.Loading
             try {
-                val fetchedImages = mockNetworkFetch()
+                val fetchedImages = photoService.getPhotos()
                 _allImages.value = DataState.Success(fetchedImages)
             } catch (e: Exception) {
                 _allImages.value = DataState.Error(e)
