@@ -303,6 +303,7 @@ class MainViewModel : ViewModel() {
     }
 }
 
+//data classes are used by Retrofit to serialize and deserialize the data
 data class ImageModel(
     val id: Int,
     val albumId: Int,
@@ -310,6 +311,11 @@ data class ImageModel(
     val thumbnailUrl: String,
     val imageUrl: String,
     val albumTitle: String? = null
+)
+data class Album(
+    val userId: Int,
+    val id: Int,
+    val title: String
 )
 
 //The interface that Retrofit uses to call the API.
