@@ -1,5 +1,6 @@
 package com.example.mypics_androidcomposeapp
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,6 +38,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.room.Dao
+import androidx.room.Database
+import androidx.room.Delete
+import androidx.room.Entity
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.Room
+import androidx.room.RoomDatabase
 
 import coil.compose.AsyncImage
 import retrofit2.http.GET
@@ -337,5 +348,53 @@ object ApiClient {
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+}
+
+//an entity class that Room will use to create a table.
+@Entity(tableName = "images")
+data class ImageEntity(
+    @PrimaryKey val id: Int,
+    val albumId: Int,
+    val title: String,
+    val thumbnailUrl: String,
+    val imageUrl: String,
+    val albumTitle: String? = null
+)
+
+//Data Access Object: an interface with the methods that need to access local data.
+@Dao
+interface ImageDao {
+    @Query("SELECT * FROM images")
+    fun getAllImages(): List<ImageEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(vararg images: ImageEntity)
+
+    @Delete
+    suspend fun delete(image: ImageEntity)
+}
+
+//an abstract class that extends RoomDatabase and includes all DAOs
+@Database(entities = [ImageEntity::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun imageDao(): ImageDao
+}
+
+// about to yse Hilt or another DI framework to provide instances of the database and DAOs.
+object DatabaseBuilder {
+    @Volatile
+    private var INSTANCE: AppDatabase? = null
+
+    fun getDatabase(context: Context): AppDatabase {
+        return INSTANCE ?: synchronized(this) {
+            val instance = Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "my_pics_database"
+            ).build()
+            INSTANCE = instance
+            instance
+        }
     }
 }
