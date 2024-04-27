@@ -28,10 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -50,18 +48,15 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-
 import coil.compose.AsyncImage
-import retrofit2.http.GET
 import com.example.mypics_androidcomposeapp.ui.theme.MyPicsAndroidComposeAppTheme
-
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -233,14 +228,15 @@ fun ImageDetailScreen(image: ImageModel, navController: NavController) {
         Text(text = "Image not found")
     }}
 
-/*
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    MyPicsAndroidComposeAppTheme {
-        MainScreen(MainViewModel(), rememberNavController())
-    }
-}*/
+
+//@Preview(showBackground = true)
+//@Composable
+//fun DefaultPreview() {
+//    MyPicsAndroidComposeAppTheme {
+//        val viewModel: MainViewModel = viewModel()
+//        MainScreen(viewModel, rememberNavController())
+//    }
+//}
 
 sealed class DataState<out T> {
     object Loading : DataState<Nothing>()
