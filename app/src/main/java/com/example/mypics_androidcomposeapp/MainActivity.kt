@@ -323,7 +323,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun viewImage(image: ImageModel, navController: NavController) {
-        Log.d("ViewImage", "Navigating with image ID: ${image.id}")
+        //Log.d("ViewImage", "Navigating with image ID: ${image.id}")
         navController.navigate("detailScreen/${image.id}")
     }
 
@@ -337,6 +337,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Convert ImageModel to ImageEntity before saving
             val imageEntity = ImageModel.toEntity(image)
             imageDao.insertAll(imageEntity)
+            Log.d("database", "insertAll method was called")
         }
     }
 
@@ -349,6 +350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Here, you should also interact with the Room database to delete the image
             val imageEntity = ImageModel.toEntity(image)
             imageDao.delete(imageEntity)
+            Log.d("database", "delete method was called")
         }
     }
 
@@ -464,6 +466,7 @@ object DatabaseBuilder {
                 AppDatabase::class.java,
                 "my_pics_database"
             ).build()
+            Log.d("database", "Room database created")
             INSTANCE = instance
             instance
         }
