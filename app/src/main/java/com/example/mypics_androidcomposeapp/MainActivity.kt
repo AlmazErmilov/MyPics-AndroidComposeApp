@@ -7,11 +7,14 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -127,23 +130,44 @@ fun SavedImagesList(viewModel: MainViewModel, navController: NavController) {
         is DataState.Success -> {
             LazyColumn {
                 items(savedImagesState.data) { image ->
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         AsyncImage(
                             model = image.thumbnailUrl,
                             contentDescription = "Thumbnail",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .size(70.dp)  // Consistent size with PlaceholderImagesList
                         )
-                        Button(onClick = { viewModel.viewImage(image, navController) }) {
-                            Text("View")
-                        }
-                        Button(onClick = { viewModel.deleteImage(image) }) {
-                            Text("Delete")
+                        Box(
+                            modifier = Modifier
+                                .weight(2f)  // more weight to the button area
+                                .padding(2.dp),
+                            contentAlignment = Alignment.Center  // centers the buttons within the Box
+                        ) {
+                            Row {
+                                Button(
+                                    onClick = { viewModel.viewImage(image, navController) }
+                                ) {
+                                    Text("View")
+                                }
+                                // Spacer(modifier = Modifier.width(8.dp))  // horizontal space between the buttons
+                                Button(
+                                    onClick = { viewModel.deleteImage(image) }  // Changes from 'saveImage' to 'deleteImage'
+                                ) {
+                                    Text("Delete")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        is DataState.Error -> Text("Failed to load images")
+        is DataState.Error -> {
+            Text("Failed to load images")
+        }
     }
 }
 
@@ -156,17 +180,36 @@ fun PlaceholderImagesList(viewModel: MainViewModel, navController: NavController
         is DataState.Success -> {
             LazyColumn {
                 items(allImages.data) { image ->
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         AsyncImage(
                             model = image.thumbnailUrl,
                             contentDescription = "Thumbnail",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .size(70.dp)// Maintain the image taking 1/3 of the space (adjustable as needed)
                         )
-                        Button(onClick = { viewModel.viewImage(image, navController) }) {
-                            Text("View")
-                        }
-                        Button(onClick = { viewModel.saveImage(image) }) {
-                            Text("Save")
+                        Box(
+                            modifier = Modifier
+                                .weight(2f)  // more weight to the button area
+                                .padding(2.dp),
+                            contentAlignment = Alignment.Center  // centers the buttons within the Box
+                        ) {
+                            Row {
+                                Button(
+                                    onClick = { viewModel.viewImage(image, navController) }
+                                ) {
+                                    Text("View")
+                                }
+                                //Spacer(modifier = Modifier.height(8.dp))  // vertical space between the buttons
+                                Button(
+                                    onClick = { viewModel.saveImage(image) }
+                                ) {
+                                    Text("Save")
+                                }
+                            }
                         }
                     }
                 }
