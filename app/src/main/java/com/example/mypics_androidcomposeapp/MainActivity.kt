@@ -89,13 +89,7 @@ fun AppNavigation() {
         })) { backStackEntry ->
             val imageId = backStackEntry.arguments?.getInt("imageId") ?: -1
             if (imageId != -1) {
-                val viewModel: MainViewModel = viewModel()
-                val image = viewModel.getImageById(imageId)
-                if (image != null) {
-                    ImageDetailScreen(image, navController)
-                } else {
-                    Text("Error: Image not found")
-                }
+                ImageDetailScreenWrapper(navController, imageId)
             } else {
                 Text("Error: Invalid image ID")
             }
@@ -223,26 +217,29 @@ fun PlaceholderImagesList(viewModel: MainViewModel, navController: NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun ImageDetailScreenWrapper(navController: NavController, imageId: Int) {
+    Column {
+        TopAppBar(
+            title = {
+                Row {
+                    Text("<", modifier = Modifier.clickable { navController.navigate("mainScreen") })
+                    Text("Photos", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.LightGray)
+        )
+        // Invoke ImageDetailScreen with the imageId
+        val viewModel: MainViewModel = viewModel()
+        val image = viewModel.getImageById(imageId)
+        ImageDetailScreen(image, navController)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
     if (image != null) {
         Column {
-            TopAppBar(
-                title = {
-                    Row {
-                        Text("<", modifier = Modifier.clickable {
-                            navController.navigate("mainScreen")
-                        })
-                        Text(
-                            "Photos",
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.LightGray
-                ),
-            )
             Spacer(modifier = Modifier.height(16.dp))
             AsyncImage(
                 model = image.imageUrl,
