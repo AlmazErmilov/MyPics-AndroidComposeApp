@@ -264,7 +264,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _allImages.value = DataState.Loading
             try {
                 val fetchedImages = photoService.getPhotos()
-                _allImages.value = DataState.Success(fetchedImages)
+                // Limit the number of images to the first 5
+                val limitedImages = fetchedImages.take(5)
+                _allImages.value = DataState.Success(limitedImages)
             } catch (e: Exception) {
                 _allImages.value = DataState.Error(e)
             }
