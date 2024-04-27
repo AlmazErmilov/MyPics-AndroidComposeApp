@@ -3,6 +3,7 @@ package com.example.mypics_androidcomposeapp
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -264,6 +265,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun viewImage(image: ImageModel, navController: NavController) {
+        Log.d("ViewImage", "Navigating with image ID: ${image.id}")
         navController.navigate("detailScreen/${image.id}")
     }
 
@@ -303,7 +305,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getImageById(imageId: Int?): ImageModel? {
-        return savedImages.value.let { state ->
+        return allImages.value.let { state ->
             when (state) {
                 is DataState.Success -> state.data.firstOrNull { it.id == imageId }
                 else -> null
