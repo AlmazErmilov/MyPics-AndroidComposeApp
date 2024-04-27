@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")    // вот это я добавил
+    //id("com.google.devtools.ksp")
+    id("kotlin-kapt")
 }
 
 android {
@@ -81,4 +82,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")         // Retrofit
     implementation("com.squareup.retrofit2:converter-gson:2.9.0");
 
+    //ksp("androidx.room:room-compiler:2.5.0")
+    implementation("androidx.work:work-runtime-ktx:2.7.1")
 }

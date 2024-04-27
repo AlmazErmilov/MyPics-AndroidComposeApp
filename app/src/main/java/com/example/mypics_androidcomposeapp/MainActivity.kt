@@ -62,10 +62,15 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import androidx.work.CoroutineWorker
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setupWorkManager()
         setContent {
             MyPicsAndroidComposeAppTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
@@ -73,6 +78,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    private fun setupWorkManager() {
+        val workRequest = OneTimeWorkRequestBuilder<DownloadImagesWorker>().build()
+        WorkManager.getInstance(applicationContext).enqueue(workRequest)
     }
 }
 
@@ -262,14 +271,14 @@ fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun DefaultPreview() {
-//    MyPicsAndroidComposeAppTheme {
-//        val viewModel: MainViewModel = viewModel()
-//        MainScreen(viewModel, rememberNavController())
-//    }
-//}
+/*@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    MyPicsAndroidComposeAppTheme {
+        val viewModel: MainViewModel = viewModel()
+        MainScreen(viewModel, rememberNavController())
+    }
+}*/
 
 sealed class DataState<out T> {
     object Loading : DataState<Nothing>()
@@ -290,7 +299,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init { loadImages() }
 
-    // lateinit var navController: NavController // commented now pga viewImage
+    // late init var navController: NavController // commented now pga viewImage
 
     private fun loadImages() {
         viewModelScope.launch {
@@ -450,6 +459,26 @@ object DatabaseBuilder {
             ).build()
             INSTANCE = instance
             instance
+        }
+    }
+}
+
+//Worker class will handle fetching the images in the background and storing them in the database.
+class DownloadImagesWorker(
+    appContext: Context,
+    workerParams: WorkerParameters
+) : CoroutineWorker(appContext, workerParams) {
+    override suspend fun doWork(): Result {
+        return try {
+            val photoService = ApiClient.instance.create(PhotoService::class.java)
+            val images = photoService.getPhotos()
+            val imageEntities = images.map { ImageModel.toEntity(it) }.toTypedArray()
+            val database = DatabaseBuilder.getDatabase(applicationContext)
+            database.imageDao().insertAll(*imageEntities)
+            Result.success()
+        } catch (e: Exception) {
+            Log.e("DownloadImagesWorker", "Error downloading images", e)
+            Result.failure()
         }
     }
 }
