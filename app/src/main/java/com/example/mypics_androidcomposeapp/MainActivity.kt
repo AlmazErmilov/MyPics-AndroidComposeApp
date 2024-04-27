@@ -76,16 +76,23 @@ fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "mainScreen") {
         composable("mainScreen") {
-            val viewModel: MainViewModel = viewModel() // Ensure viewModel is instantiated correctly
+            val viewModel: MainViewModel = viewModel()
             MainScreen(viewModel, navController)
         }
-        composable("detailScreen/{imageId}", arguments = listOf(navArgument("imageId") { type = NavType.IntType })) { backStackEntry ->
-            val imageId = backStackEntry.arguments?.getInt("imageId")
-            val viewModel: MainViewModel = viewModel() // Retrieve ViewModel in Composable scope
-            viewModel.getImageById(imageId)?.let { image ->
-                ImageDetailScreen(image, navController) // This is now correctly placed in a Composable function
-            } ?: run {
-                Text("Error: Image not found")
+        composable("detailScreen/{imageId}", arguments = listOf(navArgument("imageId") {
+            type = NavType.IntType
+        })) { backStackEntry ->
+            val imageId = backStackEntry.arguments?.getInt("imageId") ?: -1
+            if (imageId != -1) {
+                val viewModel: MainViewModel = viewModel()
+                val image = viewModel.getImageById(imageId)
+                if (image != null) {
+                    ImageDetailScreen(image, navController)
+                } else {
+                    Text("Error: Image not found")
+                }
+            } else {
+                Text("Error: Invalid image ID")
             }
         }
     }
@@ -99,37 +106,32 @@ fun MainScreen(viewModel: MainViewModel, navController: NavController) {
             title = { Text(
                 "Home screen",
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally)
-            )
-            },
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = Color.LightGray
-            ),
+                modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)
+            )},
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.LightGray)
         )
-        PlaceholderImagesList(viewModel)
-
-        Text(text = "_____________________________________")
-
-        SavedImagesList(viewModel)
+        PlaceholderImagesList(viewModel, navController) // Now passing navController
+        Text(text = "Saved images", modifier = Modifier
+            .fillMaxWidth()
+        )
+        SavedImagesList(viewModel, navController)
     }
 }
 
 @Composable
-fun SavedImagesList(viewModel: MainViewModel) {
+fun SavedImagesList(viewModel: MainViewModel, navController: NavController) {
     when (val savedImagesState = viewModel.savedImages.collectAsState().value) {
-        is DataState.Loading -> CircularProgressIndicator() // Handle loading state
+        is DataState.Loading -> CircularProgressIndicator()
         is DataState.Success -> {
             LazyColumn {
-                items(savedImagesState.data) { image -> // Fixed the type mismatch here
+                items(savedImagesState.data) { image ->
                     Row {
                         AsyncImage(
-                            model = image.thumbnailUrl, // Assuming thumbnailUrl is a property of ImageModel
+                            model = image.thumbnailUrl,
                             contentDescription = "Thumbnail",
                             modifier = Modifier.weight(1f)
                         )
-                        Button(onClick = { viewModel.viewImage(image) }) {
+                        Button(onClick = { viewModel.viewImage(image, navController) }) {
                             Text("View")
                         }
                         Button(onClick = { viewModel.deleteImage(image) }) {
@@ -139,20 +141,16 @@ fun SavedImagesList(viewModel: MainViewModel) {
                 }
             }
         }
-        is DataState.Error -> Text("Failed to load images") // Display error message
+        is DataState.Error -> Text("Failed to load images")
     }
 }
 
 @Composable
-fun PlaceholderImagesList(viewModel: MainViewModel) {
-    // Collect the StateFlow from the ViewModel
+fun PlaceholderImagesList(viewModel: MainViewModel, navController: NavController) {
     val allImagesState = viewModel.allImages.collectAsState()
 
     when (val allImages = allImagesState.value) {
-        is DataState.Loading -> {
-            // Display a CircularProgressIndicator or some loading indication
-            CircularProgressIndicator()
-        }
+        is DataState.Loading -> CircularProgressIndicator()
         is DataState.Success -> {
             LazyColumn {
                 items(allImages.data) { image ->
@@ -162,7 +160,7 @@ fun PlaceholderImagesList(viewModel: MainViewModel) {
                             contentDescription = "Thumbnail",
                             modifier = Modifier.weight(1f)
                         )
-                        Button(onClick = { viewModel.viewImage(image) }) {
+                        Button(onClick = { viewModel.viewImage(image, navController) }) {
                             Text("View")
                         }
                         Button(onClick = { viewModel.saveImage(image) }) {
@@ -173,7 +171,6 @@ fun PlaceholderImagesList(viewModel: MainViewModel) {
             }
         }
         is DataState.Error -> {
-            // Display an error message
             Text(text = "Error: ${allImages.exception.localizedMessage}")
         }
     }
@@ -181,7 +178,7 @@ fun PlaceholderImagesList(viewModel: MainViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageDetailScreen(image: ImageModel, navController: NavController) {
+fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
     if (image != null) {
         Column {
             TopAppBar(
@@ -190,12 +187,10 @@ fun ImageDetailScreen(image: ImageModel, navController: NavController) {
                         Text("<", modifier = Modifier.clickable {
                             navController.navigate("mainScreen")
                         })
-
                         Text(
                             "Photos",
                             textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 },
@@ -203,31 +198,26 @@ fun ImageDetailScreen(image: ImageModel, navController: NavController) {
                     containerColor = Color.LightGray
                 ),
             )
-
-        Text(text = "Selected Image")
-        Spacer(modifier = Modifier.height(16.dp))
-        AsyncImage(
-            model = image.imageUrl,
-            contentDescription = "Selected Image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Id: ${image.id}")
-        Text(text = "Title: ${image.title}")
-        // Assuming you have the albumId and you fetch the album title using the albumId
-        // You would have to modify your ImageModel to include albumId and make a network call to get the album title
-        // For simplicity, we'll just display the albumId here
-        Text(text = "Album number: ${image.albumId}")
-        // Placeholder for Album title
-        Text(text = "Album title: [Album Title Here]")
+            Text(text = "Selected Image")
+            Spacer(modifier = Modifier.height(16.dp))
+            AsyncImage(
+                model = image.imageUrl,
+                contentDescription = "Selected Image",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Id: ${image.id}")
+            Text(text = "Title: ${image.title}")
+            Text(text = "Album number: ${image.albumId}")
+            Text(text = "Album title: [Album Title Here]")  // Placeholder for album title
+        }
+    } else {
+        Text("Error: Image not found")
     }
-} else {
-        Text(text = "Image not found")
-    }}
-
+}
 
 //@Preview(showBackground = true)
 //@Composable
@@ -257,7 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init { loadImages() }
 
-    lateinit var navController: NavController
+    // lateinit var navController: NavController // commented now pga viewImage
 
     private fun loadImages() {
         viewModelScope.launch {
@@ -273,7 +263,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun viewImage(image: ImageModel) {
+    fun viewImage(image: ImageModel, navController: NavController) {
         navController.navigate("detailScreen/${image.id}")
     }
 
@@ -379,7 +369,7 @@ data class ImageEntity(
     val albumId: Int,
     val title: String,
     val thumbnailUrl: String,
-    val imageUrl: String,
+    val imageUrl: String?,  // nullable now
     val albumTitle: String? = null
 )
 
