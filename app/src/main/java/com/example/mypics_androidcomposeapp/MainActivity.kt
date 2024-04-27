@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,6 +53,10 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.work.CoroutineWorker
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import coil.compose.AsyncImage
 import com.example.mypics_androidcomposeapp.ui.theme.MyPicsAndroidComposeAppTheme
 import com.google.gson.annotations.SerializedName
@@ -62,10 +67,6 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
-import androidx.work.CoroutineWorker
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,9 +89,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val viewModel: MainViewModel = viewModel()
+
     NavHost(navController = navController, startDestination = "mainScreen") {
         composable("mainScreen") {
-            val viewModel: MainViewModel = viewModel()
             MainScreen(viewModel, navController)
         }
         composable("detailScreen/{imageId}", arguments = listOf(navArgument("imageId") {
@@ -98,7 +100,7 @@ fun AppNavigation() {
         })) { backStackEntry ->
             val imageId = backStackEntry.arguments?.getInt("imageId") ?: -1
             if (imageId != -1) {
-                ImageDetailScreenWrapper(navController, imageId)
+                ImageDetailScreenWrapper(viewModel, navController, imageId)
             } else {
                 Text("Error: Invalid image ID")
             }
@@ -119,57 +121,76 @@ fun MainScreen(viewModel: MainViewModel, navController: NavController) {
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.LightGray)
         )
         PlaceholderImagesList(viewModel, navController) // Now passing navController
-        Text(text = "Saved images", modifier = Modifier
-            .fillMaxWidth()
-        )
         SavedImagesList(viewModel, navController)
     }
 }
 
 @Composable
 fun SavedImagesList(viewModel: MainViewModel, navController: NavController) {
-    when (val savedImagesState = viewModel.savedImages.collectAsState().value) {
-        is DataState.Loading -> CircularProgressIndicator()
-        is DataState.Success -> {
-            LazyColumn {
-                items(savedImagesState.data) { image ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        AsyncImage(
-                            model = image.thumbnailUrl,
-                            contentDescription = "Thumbnail",
-                            modifier = Modifier
-                                .weight(1f)
-                                .size(70.dp)  // Consistent size with PlaceholderImagesList
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(2f)  // more weight to the button area
-                                .padding(2.dp),
-                            contentAlignment = Alignment.Center  // centers the buttons within the Box
-                        ) {
-                            Row {
-                                Button(
-                                    onClick = { viewModel.viewImage(image, navController) }
-                                ) {
-                                    Text("View")
-                                }
-                                // Spacer(modifier = Modifier.width(8.dp))  // horizontal space between the buttons
-                                Button(
-                                    onClick = { viewModel.deleteImage(image) }  // Changes from 'saveImage' to 'deleteImage'
-                                ) {
-                                    Text("Delete")
-                                }
-                            }
+    val savedImagesState = viewModel.savedImages.collectAsState().value  // Collecting the current state of saved images
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Saved Images",
+            // style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(4.dp)
+        )
+        when (savedImagesState) {
+            is DataState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()  // Show loading indicator while images are loading
+                }
+            }
+            is DataState.Success -> {
+                if (savedImagesState.data.isNotEmpty()) {
+                    LazyColumn {
+                        items(savedImagesState.data) { image ->
+                            ImageRow(image, viewModel, navController)
                         }
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No saved images available.")  // Show message if no images are saved
                     }
                 }
             }
+            is DataState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Failed to load saved images: ${savedImagesState.exception.localizedMessage}")  // Display error message
+                }
+            }
         }
-        is DataState.Error -> {
-            Text("Failed to load images")
+    }
+}
+
+@Composable
+fun ImageRow(image: ImageModel, viewModel: MainViewModel, navController: NavController, actionText: String = "Delete") {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { viewModel.viewImage(image, navController) }
+            .padding(2.dp)
+    ) {
+        AsyncImage(
+            model = image.thumbnailUrl,
+            contentDescription = "Thumbnail of image",
+            modifier = Modifier
+                .size(70.dp)
+                .padding(2.dp),
+            contentScale = ContentScale.Crop
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(image.title)
+        }
+        Button(
+            onClick = {
+                if (actionText == "Save") viewModel.saveImage(image)
+                else viewModel.deleteImage(image)
+            },
+            modifier = Modifier.padding(2.dp)
+        ) {
+            Text(actionText)
         }
     }
 }
@@ -178,78 +199,64 @@ fun SavedImagesList(viewModel: MainViewModel, navController: NavController) {
 fun PlaceholderImagesList(viewModel: MainViewModel, navController: NavController) {
     val allImagesState = viewModel.allImages.collectAsState()
 
-    when (val allImages = allImagesState.value) {
-        is DataState.Loading -> CircularProgressIndicator()
-        is DataState.Success -> {
-            LazyColumn {
-                items(allImages.data) { image ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        AsyncImage(
-                            model = image.thumbnailUrl,
-                            contentDescription = "Thumbnail",
-                            modifier = Modifier
-                                .weight(1f)
-                                .size(70.dp)// Maintain the image taking 1/3 of the space (adjustable as needed)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(2f)  // more weight to the button area
-                                .padding(2.dp),
-                            contentAlignment = Alignment.Center  // centers the buttons within the Box
-                        ) {
-                            Row {
-                                Button(
-                                    onClick = { viewModel.viewImage(image, navController) }
-                                ) {
-                                    Text("View")
-                                }
-                                //Spacer(modifier = Modifier.height(8.dp))  // vertical space between the buttons
-                                Button(
-                                    onClick = { viewModel.saveImage(image) }
-                                ) {
-                                    Text("Save")
-                                }
-                            }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Available Images",
+            modifier = Modifier.padding(4.dp)
+        )
+        when (val allImages = allImagesState.value) {
+            is DataState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is DataState.Success -> {
+                if (allImages.data.isNotEmpty()) {
+                    LazyColumn {
+                        items(allImages.data) { image ->
+                            ImageRow(image, viewModel, navController, "Save")
                         }
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No available images.")
                     }
                 }
             }
-        }
-        is DataState.Error -> {
-            Text(text = "Error: ${allImages.exception.localizedMessage}")
+            is DataState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Error: ${allImages.exception.localizedMessage}")
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageDetailScreenWrapper(navController: NavController, imageId: Int) {
+fun ImageDetailScreenWrapper(viewModel: MainViewModel, navController: NavController, imageId: Int) {
     Column {
         TopAppBar(
             title = {
                 Row {
-                    Text("<", modifier = Modifier.clickable { navController.navigate("mainScreen") })
+                    Text("<", modifier = Modifier.clickable {
+                        navController.popBackStack()  // Ensure proper back navigation
+                    })
                     Text("Photos", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.LightGray)
         )
-        // Invoke ImageDetailScreen with the imageId
-        val viewModel: MainViewModel = viewModel()
-        val image = viewModel.getImageById(imageId)
-        ImageDetailScreen(image, navController)
+        // Retrieve the image details for the given imageId
+        ImageDetailScreen(viewModel.getImageById(imageId), navController)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
     if (image != null) {
         Column {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             AsyncImage(
                 model = image.imageUrl,
                 contentDescription = "Selected Image",
@@ -258,9 +265,9 @@ fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
                     .height(300.dp),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(text = "Selected Image")
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(text = "Id: ${image.id}")
             Text(text = "Title: ${image.title}")
             Text(text = "Album number: ${image.albumId}")
@@ -307,7 +314,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val fetchedImages = photoService.getPhotos()
                 // Limit the number of images to the first 5
-                val limitedImages = fetchedImages.take(5)
+                val limitedImages = fetchedImages.take(3)
                 _allImages.value = DataState.Success(limitedImages)
             } catch (e: Exception) {
                 _allImages.value = DataState.Error(e)
