@@ -51,6 +51,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import coil.compose.AsyncImage
 import com.example.mypics_androidcomposeapp.ui.theme.MyPicsAndroidComposeAppTheme
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -199,7 +200,6 @@ fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
                     containerColor = Color.LightGray
                 ),
             )
-            Text(text = "Selected Image")
             Spacer(modifier = Modifier.height(16.dp))
             AsyncImage(
                 model = image.imageUrl,
@@ -209,6 +209,8 @@ fun ImageDetailScreen(image: ImageModel?, navController: NavController) {
                     .height(300.dp),
                 contentScale = ContentScale.Crop
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Selected Image")
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Id: ${image.id}")
             Text(text = "Title: ${image.title}")
@@ -320,9 +322,9 @@ data class ImageModel(
     val albumId: Int,
     val title: String,
     val thumbnailUrl: String,
-    val imageUrl: String,
+    @SerializedName("url") val imageUrl: String,  // This maps the JSON key 'url' to the Kotlin property 'imageUrl'
     val albumTitle: String? = null
-){
+) {
     //It's often useful to have a method to convert a data class to and from the entity class
     companion object {
         fun toEntity(image: ImageModel) = ImageEntity(
